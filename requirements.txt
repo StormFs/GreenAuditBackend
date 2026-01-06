@@ -1,0 +1,14 @@
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.6.0
+langchain>=0.1.0
+langchain-openai
+langchain-google-genai
+python-multipart
+sentinelhub>=3.9.0
+torch
+numpy
+scikit-learn
+python-dotenv
+pydantic-settings
+tenacity

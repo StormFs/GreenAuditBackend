@@ -1,0 +1,26 @@
+import os
+import google.generativeai as genai
+
+# Manually load .env since dotenv might be acting up
+api_key = None
+if os.path.exists(".env"):
+    with open(".env", "r") as f:
+        for line in f:
+            if line.startswith("GOOGLE_API_KEY="):
+                api_key = line.strip().split("=")[1]
+                break
+
+if not api_key:
+    print("No GOOGLE_API_KEY found in .env")
+    exit(1)
+
+genai.configure(api_key=api_key)
+
+print(f"Using key: {api_key[:5]}...")
+print("Listing available models...")
+try:
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            print(f"- {m.name}")
+except Exception as e:
+    print(f"Error listing models: {e}")
