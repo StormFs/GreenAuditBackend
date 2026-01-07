@@ -24,3 +24,15 @@ class IExtractionService(ABC):
     @abstractmethod
     async def extract_claims(self, text: str) -> List[EnvironmentalClaim]:
         pass
+
+class IFactCheckService(ABC):
+    @abstractmethod
+    async def verify_claim(self, claim: EnvironmentalClaim) -> dict:
+        """
+        Returns a dict with:
+        - verified: bool
+        - confidence: float
+        - evidence: str
+        - sources: List[str]
+        """
+        pass

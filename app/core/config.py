@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     
     # Gemini API Key
     GOOGLE_API_KEY: str = ""
+    
+    # Groq API Key
+    GROQ_API_KEY: str = ""
 
     class Config:
         env_file = ".env"

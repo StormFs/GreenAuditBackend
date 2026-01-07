@@ -5,6 +5,15 @@ langchain>=0.1.0
 langchain-openai
 langchain-google-genai
 python-multipart
+pypdf
+sentinelhub>=3.9.0
+numpy
+shapely
+torch
+torchvision
 python-dotenv
 pydantic-settings
 tenacity
+langchain-community
+duckduckgo-search
+langchain-groq
