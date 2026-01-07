@@ -9,8 +9,6 @@ pypdf
 sentinelhub>=3.9.0
 numpy
 shapely
-torch
-torchvision
 python-dotenv
 pydantic-settings
 tenacity
