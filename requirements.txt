@@ -15,5 +15,5 @@ tenacity
 langchain-community>=0.2.0
 duckduckgo-search>=6.1.5
 langchain-groq
-
+ddgs
 
