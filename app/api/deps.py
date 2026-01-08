@@ -20,7 +20,7 @@ else:
 
 # Conditionally instantiate the extraction service
 # We are temporarily forcing MOCK services because the keys are exhausted/rate-limited
-FORCE_MOCK_AI = True 
+FORCE_MOCK_AI = False 
 
 if (settings.GOOGLE_API_KEY or settings.GROQ_API_KEY) and not FORCE_MOCK_AI:
     _extraction_service = LLMExtractionService()

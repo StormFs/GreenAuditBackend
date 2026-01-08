@@ -3,6 +3,31 @@ import asyncio
 from app.schemas.report import VerificationReport, ReportStatus, VerificationResult
 from app.core.interfaces import IReportRepository, IExtractionService, ISatelliteService, IFactCheckService
 
+
+def _determine_claim_intent(description: str) -> str:
+    """
+    Determines if the claim is about CREATING something (Establishment) 
+    or KEEPING something (Preservation).
+    """
+    desc = description.lower()
+    
+    establishment_keywords = [
+        "planted", "restored", "established", "new", "built", 
+        "created", "increased", "grew", "generated", "installation", "deployed"
+    ]
+    
+    preservation_keywords = [
+        "protected", "preserved", "maintained", "conserved", 
+        "saved", "prevented", "avoided", "kept"
+    ]
+    
+    if any(k in desc for k in establishment_keywords):
+        return "establishment"
+    if any(k in desc for k in preservation_keywords):
+        return "preservation"
+        
+    return "unknown"
+
 async def run_audit_workflow(
     report_id: str, 
     text_content: str,
@@ -52,51 +77,105 @@ async def run_audit_workflow(
             # Route based on location presence
             if claim.location and claim.location.latitude != 0 and claim.location.longitude != 0:
                 print(f"Analyzing location: {claim.location} with {type(satellite_service).__name__}")
+                
+
+                # Determine Verification Mode
+                desc = claim.description.lower()
+                mode = "vegetation"
+                if any(w in desc for w in ["solar", "panel", "energy", "photovoltaic", "sun"]):
+                    mode = "solar"
+                elif any(w in desc for w in ["water", "coastal", "mangrove", "erosion", "river", "flood"]):
+                    mode = "water"
+                
+                # Determine Claim Intent (Establishment vs Preservation)
+                intent = _determine_claim_intent(desc)
+                print(f"Detected Analysis Mode: {mode.upper()} | Intent: {intent.upper()}")
+
                 try:
-                    # Fetch Satellite Data
-                    satellite_data = await satellite_service.analyze_location(claim.location)
+                    # Fetch Satellite Data with specific mode
+                    satellite_data = await satellite_service.analyze_location(claim.location, mode=mode)
                     print(f"Satellite analysis result: {satellite_data}")
                 except Exception as sat_err:
                     print(f"Error fetching satellite data: {sat_err}")
                 
                 if satellite_data:
-                    # Advanced Verification Logic
-                    # A change of 0.01 is usually sensor noise (clouds, shadows, atmosphere).
-                    # We usually look for at least a 0.05 (5%) to 0.10 (10%) positive shift for "Reforestation".
-                    # However, if the claim is "Preservation" (avoiding loss), then a change of ~0.0 is GOOD.
+                    # Get the change value (0.0 if None)
+                    change = satellite_data.vegetation_change if satellite_data.vegetation_change is not None else 0.0
                     
-                    # Heuristic: Detect intent from claim description
-                    claim_desc = claim.description.lower()
-                    is_restoration = any(w in claim_desc for w in ["planted", "restored", "increased", "grew"])
+                    # Logic Branching based on Mode & Intent
+                    if mode == "solar":
+                         # Solar usually implies "Establishment" of new infrastructure
+                         # We expect high visual change
+                         if intent == "preservation":
+                              # "Maintained solar farm" - change might be low if it existed 1 year ago
+                              verified = True
+                              confidence = 0.8
+                              evidence_text = f"Solar farm detected. Visual change {change:.1f}% consistent with maintenance."
+                         else:
+                              # Default to Establishment/New for Solar
+                              if change > 20.0: # Significant visual change
+                                   verified = True
+                                   confidence = min(change / 100 + 0.5, 0.95)
+                                   evidence_text = f"New Solar Infrastructure Detected. Visual Change: {change:.1f}%"
+                              else:
+                                   verified = False
+                                   confidence = 0.6
+                                   evidence_text = f"claimed 'New Solar' but low visual change identified ({change:.1f}%)."
                     
-                    if is_restoration:
-                        # For restoration, we demand positive growth > 5%
-                        if satellite_data.vegetation_change and satellite_data.vegetation_change > 5.0:
-                             verified = True
-                             confidence = 0.80 + min((satellite_data.vegetation_change / 100), 0.15)
-                        else:
-                             verified = False
-                             confidence = 0.60 # Less confident it's false, could be slow growth
-                    else:
-                        # For "protected" or "maintained", we verify if vegetation is present and stable
-                        if satellite_data.vegetation_detected and (satellite_data.vegetation_change is None or satellite_data.vegetation_change > -5.0):
-                             verified = True
-                             confidence = 0.90
-                        else:
-                             verified = False
-                             confidence = 0.85
+                    elif mode == "water":
+                         if intent == "establishment":
+                             # "Restored mangroves" -> Expect positive change
+                             if change > 1.0:
+                                 verified = True
+                                 confidence = 0.85
+                                 evidence_text = f"Coastal Vegetation Expansion Detected: {change:.1f}%"
+                             else:
+                                 verified = False
+                                 confidence = 0.50
+                                 evidence_text = f"Claimed establishment/restoration but saw {change:.1f}% change."
+                         else:
+                             # "Protected coast" -> Expect Stability (approx 0 change) or Growth
+                             if change > -5.0: # Allows small loss, but mostly stable
+                                 verified = True 
+                                 confidence = 0.90
+                                 evidence_text = f"Coastal Zone Stable/Protected. Change: {change:.1f}%"
+                             else:
+                                 verified = False
+                                 confidence = 0.70
+                                 evidence_text = f"Protected zone shows significant degradation ({change:.1f}%)."
 
-                    # Generate "Proposed vs Detected" string
-                    if evidence_text is None:
-                        evidence_text = ""
-                    
-                    if claim.measure_value is not None:
-                        unit = claim.measure_unit or ""
-                        detected_val = satellite_data.vegetation_change if satellite_data.vegetation_change is not None else 0.0
-                        evidence_text += f" Proposed: {claim.measure_value}{unit}, Detected Change: {detected_val:.1f}%"
                     else:
-                        detected_val = satellite_data.vegetation_change if satellite_data.vegetation_change is not None else 0.0
-                        evidence_text += f" Detected Vegetation Change: {detected_val:.1f}%"
+                        # Vegetation / Forestry
+                        if intent == "establishment":
+                            # "Planted trees" -> Require growth
+                            if change > 5.0:
+                                verified = True
+                                confidence = 0.80 + min((change / 100), 0.15)
+                                evidence_text = f"Reforestation Verified. Growth: {change:.1f}%"
+                            elif change > 0.1:
+                                verified = False # Flagged
+                                confidence = 0.50
+                                evidence_text = f"Weak Signal: Growth detected ({change:.1f}%) but below establishment threshold (5%)."
+                            else:
+                                verified = False # Failed
+                                confidence = 0.40
+                                evidence_text = "FLAGGED: Company claimed 'New Establishment', but satellite shows zero/negative change."
+                        
+                        else:
+                            # "Protected forest" -> Verify presence and stability
+                            if satellite_data.vegetation_detected and change > -5.0:
+                                verified = True
+                                confidence = 0.90
+                                evidence_text = f"Forest Protection Verified. Area stable or growing ({change:.1f}%)."
+                            else:
+                                verified = False
+                                confidence = 0.85
+                                evidence_text = f"Protection Claim Failed: Significant vegetation loss detected ({change:.1f}%)."
+
+                        # Append quantitative comparison if available
+                        if claim.measure_value is not None:
+                             str_unit = claim.measure_unit or ""
+                             evidence_text += f" (Claimed: {claim.measure_value}{str_unit})"
 
                 else:
                     print("No satellite data returned.")
@@ -112,6 +191,9 @@ async def run_audit_workflow(
                     print(f"Web verification result: {verified} ({confidence})")
                 except Exception as fc_err:
                     print(f"Error in web fact retrieval: {fc_err}")
+                    evidence_text = f"Verification Failed due to external API error: {str(fc_err)}"
+                    verified = False
+                    confidence = 0.0
 
             
             result = VerificationResult(

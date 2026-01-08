@@ -21,10 +21,11 @@ class EnvironmentalClaim(BaseModel):
     measure_unit: Optional[str] = Field(None, description="Unit for the value (e.g. %, hectares, tons)")
 
 class SatelliteAnalysis(BaseModel):
-    ndvi_score: float = Field(..., description="Current NDVI score")
-    historical_ndvi: Optional[float] = Field(None, description="Historical NDVI score from comparison date")
-    vegetation_detected: bool = Field(..., description="Whether significant vegetation was detected currently")
-    vegetation_change: Optional[float] = Field(None, description="Percentage change in vegetation (Current - Historical)")
+    ndvi_score: float = Field(..., description="Current score (NDVI, NDWI, or Change Metric)")
+    metric_name: str = Field(default="NDVI", description="Name of the metric used (e.g. NDVI, NDWI, Visual Delta)")
+    historical_ndvi: Optional[float] = Field(None, description="Historical score from comparison date")
+    vegetation_detected: bool = Field(..., description="Whether significant features were detected")
+    vegetation_change: Optional[float] = Field(None, description="Percentage change in metric (Current - Historical)")
     analysis_date: datetime = Field(default_factory=datetime.now)
     comparison_date: Optional[datetime] = Field(None, description="Date of the historical image")
 

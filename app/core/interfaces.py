@@ -17,7 +17,10 @@ class IReportRepository(ABC):
 
 class ISatelliteService(ABC):
     @abstractmethod
-    async def analyze_location(self, coords: GeoCoordinates) -> SatelliteAnalysis:
+    async def analyze_location(self, coords: GeoCoordinates, mode: str = "vegetation") -> SatelliteAnalysis:
+        """
+        Analyze the location. Mode can be "vegetation", "solar", or "water".
+        """
         pass
 
 class IExtractionService(ABC):
