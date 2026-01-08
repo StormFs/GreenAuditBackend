@@ -116,37 +116,72 @@ class MockExtractionService(IExtractionService):
 
     async def extract_claims(self, text: str) -> List[EnvironmentalClaim]:
         """
-        Extracts environmental claims and coordinates from text using LangChain.
+        Extracts environmental claims and coordinates from text.
+        Simple Keyword-based Mocking to simulate "parsing" of the file.
         """
-        # Placeholder for LangChain logic
-        # prompt = ChatPromptTemplate.from_messages([
-        #     ("system", "Extract environmental claims and their locations."),
-        #     ("user", "{text}")
-        # ])
-        # chain = prompt | self.llm.with_structured_output(List[EnvironmentalClaim])
-        # return await chain.ainvoke({"text": text})
+        text_lower = text.lower()
+        claims = []
 
-        # Mock implementation for scaffolding
-        return [
-            EnvironmentalClaim(
-                description="Planted 5000 trees in the Amazon Rainforest",
-                location=GeoCoordinates(latitude=-3.4653, longitude=-62.2159),
-                date_claimed="2025-06-15",
-                measure_value=5000,
-                measure_unit="trees"
-            ),
-             EnvironmentalClaim(
-                description="Restored 50 hectares of mangroves",
-                location=GeoCoordinates(latitude=9.9281, longitude=-84.0907),
-                date_claimed="2025-08-20",
-                measure_value=50,
-                measure_unit="hectares"
-            ),
-             EnvironmentalClaim(
-                description="Our data centers run on 100% renewable energy",
-                location=None, # Non-spatial claim for fact checking
-                date_claimed="2025-01-01",
-                measure_value=100,
-                measure_unit="%"
+        # 1. Solar Scenario (Mojave)
+        if any(w in text_lower for w in ["solar", "photovoltaic", "mojave", "desert", "panels"]):
+            claims.append(
+                EnvironmentalClaim(
+                    description="Established new 50MW Solar Array in Mojave",
+                    location=GeoCoordinates(latitude=34.8, longitude=-116.8),
+                    date_claimed="2025-06-15",
+                    measure_value=50,
+                    measure_unit="MW"
+                )
             )
-        ]
+
+        # 2. Water/Mangrove Scenario (Thailand)
+        if any(w in text_lower for w in ["water", "mangrove", "thailand", "coastal", "flood"]):
+            claims.append(
+                EnvironmentalClaim(
+                    description="Protected 200 hectares of Coastal Mangroves",
+                    location=GeoCoordinates(latitude=14.4, longitude=100.15),
+                    date_claimed="2025-08-20",
+                    measure_value=200,
+                    measure_unit="hectares"
+                )
+            )
+
+        # 3. Deforestation/Reforestation Scenario (Amazon)
+        if any(w in text_lower for w in ["tree", "forest", "amazon", "rainforest", "plant"]):
+            claims.append(
+                EnvironmentalClaim(
+                    description="Planted 5000 trees in the Amazon Rainforest",
+                    location=GeoCoordinates(latitude=-3.4653, longitude=-62.2159),
+                    date_claimed="2025-06-15",
+                    measure_value=5000,
+                    measure_unit="trees"
+                )
+            )
+        
+        # 4. Fallback / Default (if nothing specific found, return mixed bag so user sees something)
+        if not claims:
+             claims = [
+                EnvironmentalClaim(
+                    description="Planted 5000 trees in the Amazon Rainforest",
+                    location=GeoCoordinates(latitude=-3.4653, longitude=-62.2159),
+                    date_claimed="2025-06-15",
+                    measure_value=5000,
+                    measure_unit="trees"
+                ),
+                 EnvironmentalClaim(
+                    description="Restored 50 hectares of mangroves",
+                    location=GeoCoordinates(latitude=9.9281, longitude=-84.0907),
+                    date_claimed="2025-08-20",
+                    measure_value=50,
+                    measure_unit="hectares"
+                ),
+                 EnvironmentalClaim(
+                    description="Verified: Site powered by 100% renewable energy",
+                    location=None, # Non-spatial
+                    date_claimed="2025-01-01",
+                    measure_value=100,
+                    measure_unit="%"
+                )
+            ]
+
+        return claims

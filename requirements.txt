@@ -1,7 +1,7 @@
 fastapi>=0.109.0
 uvicorn>=0.27.0
 pydantic>=2.6.0
-langchain>=0.1.0
+langchain>=0.2.0
 langchain-openai
 langchain-google-genai
 python-multipart
@@ -12,6 +12,8 @@ shapely
 python-dotenv
 pydantic-settings
 tenacity
-langchain-community
-duckduckgo-search
+langchain-community>=0.2.0
+duckduckgo-search>=6.1.5
 langchain-groq
+
+
